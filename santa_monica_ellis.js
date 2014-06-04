@@ -24,16 +24,12 @@ $( document ).ready(function() {
   var svg = d3.select("#map").select("svg"),
   g = svg.append("g");
 
-  /*Animation Timing Variables*/
-  // starting time = 507628800000
-  // max time 1385668800000
-
-  var startingTime, startingDateString, maxTime, counterTime, timer;
-  var step = 1500000000;
+  /* Initialize animation variables. These will be generated dynamically from the cartoDB data */
+  var startingTime, startingDateString, maxTime, counterTime, step, timer;
+  /* Animation length in seconds */
+  var animationDuration = 150;
+  var animationInterval = 500;
   var isPlaying = false;
-
-  //notes from tara: the fields that we are getting from cartodb are not necessarily the right fields, 
-  //I was just experimenting with those. so, no_units_on_property and eviction_date probably need to be substituteds
 
   /*Load data file from cartoDB and initialize coordinates*/
   var sql = new cartodb.SQL({ user: 'ampitup', format: 'geojson'});
@@ -41,22 +37,25 @@ $( document ).ready(function() {
   sql.execute("SELECT the_geom, bldg_number_street, cartodb_id, eviction_date, no_units_on_property FROM {{table_name}} WHERE NOT(the_geom IS NULL OR eviction_date IS NULL OR no_units_on_property IS NULL) ORDER BY eviction_date ASC", {
     table_name: 'santa_monica_ellis'})
   .done(function(collection) {
+
+    /* Set animation variables */
     var cumEvictions = 0;
-    // sets starting time to January 1st in the year of the first eviction
     var firstDate = new Date(collection.features[0].properties.eviction_date);
+    /* Sets startingTime to January 1st in the year of the first eviction */
     startingTime = new Date(firstDate.getFullYear(), 0, 1).valueOf();
-    // for the #date text on the slider widget
+    /* Text for #date above the slider widget */
     startingDateString = firstDate.getFullYear() +"/1/1";
     counterTime = startingTime;
-
     maxTime =  Date.parse(collection.features[(collection.features.length)-1].properties.eviction_date)+4000000;
+    step = Math.floor((maxTime - startingTime) / (animationDuration * (1000 / animationInterval)));
+
     collection.features.forEach(function (d) {
       d.LatLng = new L.LatLng(d.geometry.coordinates[1],d.geometry.coordinates[0]);
       cumEvictions += d.properties.no_units_on_property;
       d.properties.totalEvictions = cumEvictions;
     });
 
-     /*Add an svg group for each data point*/
+    /*Add an svg group for each data point*/
     var node = g.selectAll(".node").data(collection.features).enter().append("g");
 
     var feature = node.append("circle")
@@ -176,7 +175,7 @@ $( document ).ready(function() {
         if(counterTime >=maxTime){
           stopAnimation(); 
         }
-      },500);
+      },animationInterval);
     }
 
       function stopAnimation(){
