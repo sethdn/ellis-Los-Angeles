@@ -25,28 +25,31 @@ $( document ).ready(function() {
   g = svg.append("g");
 
   /*Animation Timing Variables*/
-  var startingTime = 861667200000;
+  // starting time = 507628800000
+  // max time 1385668800000
+
+  var startingTime, startingDateString, maxTime, counterTime, timer;
   var step = 1500000000;
-  var maxTime;
-  var timer;
   var isPlaying = false;
-  var counterTime = startingTime;
 
   //notes from tara: the fields that we are getting from cartodb are not necessarily the right fields, 
-  //I was just experimenting with those. so, no_units_on_property and ellis_purchase_date probably need to be substituteds
+  //I was just experimenting with those. so, no_units_on_property and eviction_date probably need to be substituteds
 
   /*Load data file from cartoDB and initialize coordinates*/
   var sql = new cartodb.SQL({ user: 'ampitup', format: 'geojson'});
   /*Load from CartoDB database*/
-  sql.execute("SELECT the_geom, cartodb_id, eviction_date, no_units_on_property FROM {{table_name}} WHERE NOT(the_geom IS NULL OR eviction_date IS NULL OR no_units_on_property IS NULL) ORDER BY eviction_date DESC", {
+  sql.execute("SELECT the_geom, bldg_number_street, cartodb_id, eviction_date, no_units_on_property FROM {{table_name}} WHERE NOT(the_geom IS NULL OR eviction_date IS NULL OR no_units_on_property IS NULL) ORDER BY eviction_date ASC", {
     table_name: 'santa_monica_ellis'})
   .done(function(collection) {
-console.log(collection);
     var cumEvictions = 0;
-    startingTime = Date.parse(collection.features[0].properties.ellis_purchase_date)-1000000;
-    //note: below it is only supposed to be [(collection.features.length)-1], but the last few were null for this field
-    maxTime =  Date.parse(collection.features[(collection.features.length)-10].properties.ellis_purchase_date)+4000000;
+    // sets starting time to January 1st in the year of the first eviction
+    var firstDate = new Date(collection.features[0].properties.eviction_date);
+    startingTime = new Date(firstDate.getFullYear(), 0, 1).valueOf();
+    // for the #date text on the slider widget
+    startingDateString = firstDate.getFullYear() +"/1/1";
     counterTime = startingTime;
+
+    maxTime =  Date.parse(collection.features[(collection.features.length)-1].properties.eviction_date)+4000000;
     collection.features.forEach(function (d) {
       d.LatLng = new L.LatLng(d.geometry.coordinates[1],d.geometry.coordinates[0]);
       cumEvictions += d.properties.no_units_on_property;
@@ -55,6 +58,7 @@ console.log(collection);
 
      /*Add an svg group for each data point*/
     var node = g.selectAll(".node").data(collection.features).enter().append("g");
+
     var feature = node.append("circle")
     .attr("r", function(d) { return d.properties.no_units_on_property;})
     .attr("class",  "center")
@@ -66,32 +70,33 @@ console.log(collection);
       }
       return "#f30";
     });
+
     /*show node info on mouseover*/
     node.on("mouseover", function (d) {
-      var fullDate = d.properties.ellis_purchase_date;
+      var fullDate = d.properties.eviction_date;
       var thisYear = new Date(fullDate).getFullYear();
       var currMonth = new Date(fullDate).getMonth()+1;
       var currDay = new Date(fullDate).getDate();
-      var units = d.properties.units;
+      var units = d.properties.no_units_on_property;
       var unitText = units + " eviction";
       if (units > 1) {
         unitText = units + " evictions";
       }
       var dateString = currMonth+"/"+currDay + "/"+thisYear;
-      $(".tooltip").html(d.properties.address_1+ "<br>"+unitText+"<br>"+dateString +"<br>"+"landlord");
+      $(".tooltip").html(d.properties.bldg_number_street+ "<br>"+unitText+"<br>"+dateString);
       return tooltip.style("visibility", "visible");
     })
     .on("mousemove", function () {return tooltip.style("top",
       (d3.event.pageY-10)+"px").style("left",(d3.event.pageX+10)+"px");})
     .on("click", function (d) {
-      tooltip.text(d.properties.address_1);
+      tooltip.text(d.properties.bldg_number_street);
       return tooltip.style("visibility", "visible");})
     .on("mouseout", function(){return tooltip.style("visibility", "hidden");});
 
      /*Initialize play button and slider*/
     $( "#play" ).click(togglePlay);
     $( "#slider" ).slider({
-      max: maxTime, min:startingTime, value: maxTime, step: step, 
+      min: startingTime, max: maxTime, value: maxTime, step: step, 
 
       start: function( event, ui ) {
         clearInterval(timer);
@@ -120,12 +125,12 @@ console.log(collection);
       /*Filter map points by date*/
     function filterCurrentPoints(){
        var filtered = node.attr("visibility", "hidden")
-       .filter(function(d) { return Date.parse(d.properties.ellis_purchase_date) < counterTime;}) 
+       .filter(function(d) { return Date.parse(d.properties.eviction_date) < counterTime;}) 
        .attr("visibility", "visible");
       // console.log(JSON.stringify(filtered[0]));
       // updateCounter(filtered[0].length-1);
       filtered.filter(function(d) { 
-        return Date.parse(d.properties.ellis_purchase_date) > counterTime-step;
+        return Date.parse(d.properties.eviction_date) > counterTime-step;
       }) 
       .append("circle")
       .attr("r", 4)
@@ -135,7 +140,7 @@ console.log(collection);
 
       .duration(800)
       .ease(Math.sqrt)
-      .attr("r", function (d) {return d.properties.units*30;})
+      .attr("r", function (d) {return d.properties.no_units_on_property*30;})
       .style("fill","#f40")
       .style("fill-opacity", 1e-6)
       .remove();
@@ -150,11 +155,12 @@ console.log(collection);
        totalEvictions = props.totalEvictions;
       }
       document.getElementById('counter').innerHTML =totalEvictions + " ";
+
       currDate = new Date(counterTime).getFullYear();
       var currMonth = new Date(counterTime).getMonth()+1;
       var currDay = new Date(counterTime).getDate();
      
-      document.getElementById('date').innerHTML = "1/1/1997 - " + currMonth+"/"+currDay + "/"+currDate;
+      document.getElementById('date').innerHTML = startingDateString +" - "+ currMonth+"/"+currDay + "/"+currDate;
     }
 
     /*Update slider*/
