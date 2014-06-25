@@ -1,6 +1,42 @@
 
+/*
+
+// Database             ---> santa_monica_ellis
+Row ID                  ---> cartodb_id
+Geolocated Address      ---> the_geom
+Street address          ---> bldg_number_street
+Date of Eviction        ---> eviction_date
+# of Units Evicted      ---> no_units_on_property
+
+// Hand entered Map + Animation varibales
+lat, long               ---> [34.025, -118.47]
+
+animationDuration       ---> 150
+animationInterval       ---> 300
+
+colorAnimatedCircle     ---> "red"
+colorConstantCircle     ---> "#f40"
+
+finalRadiusMultiplier   ---> 10
+
+*/
+
+
+
 $( document ).ready(function() {
   /*Tooltip showing address info*/
+
+  /* Initialize animation variables. These will be generated dynamically from the cartoDB data */
+  var startingTime, startingDateString, maxTime, counterTime, step, timer;
+  var animationDuration = 150; // in seconds
+  var animationInterval = 500; // in milliseconds
+  var finalRadiusMultiplier = 10;
+  var colorAnimatedCircle = "red";
+  var colorConstantCircle = "#f40";
+  var defaultZoom = 14;
+
+  var isPlaying = false;
+
   var tooltip = d3.select("body")
     .append("div")
     .attr("class", "tooltip")
@@ -13,7 +49,7 @@ $( document ).ready(function() {
   var map = new L.Map("map", {
     center: [34.025, -118.47],
     minZoom: 10,
-    zoom: 13
+    zoom: defaultZoom
   })
   .addLayer(new L.TileLayer("http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png"));
 
@@ -24,12 +60,6 @@ $( document ).ready(function() {
   var svg = d3.select("#map").select("svg"),
   g = svg.append("g");
 
-  /* Initialize animation variables. These will be generated dynamically from the cartoDB data */
-  var startingTime, startingDateString, maxTime, counterTime, step, timer;
-  /* Animation length in seconds */
-  var animationDuration = 150;
-  var animationInterval = 500;
-  var isPlaying = false;
 
   /*Load data file from cartoDB and initialize coordinates*/
   var sql = new cartodb.SQL({ user: 'ampitup', format: 'geojson'});
@@ -44,7 +74,7 @@ $( document ).ready(function() {
     /* Sets startingTime to January 1st in the year of the first eviction */
     startingTime = new Date(firstDate.getFullYear(), 0, 1).valueOf();
     /* Text for #date above the slider widget */
-    startingDateString = firstDate.getFullYear() +"/1/1";
+    startingDateString = "1/1/" + firstDate.getFullYear();
     counterTime = startingTime;
     maxTime =  Date.parse(collection.features[(collection.features.length)-1].properties.eviction_date)+4000000;
     step = Math.floor((maxTime - startingTime) / (animationDuration * (1000 / animationInterval)));
@@ -133,14 +163,14 @@ $( document ).ready(function() {
       }) 
       .append("circle")
       .attr("r", 4)
-      .style("fill","red")
+      .style("fill", colorAnimatedCircle)
       .style("fill-opacity", 0.8)
       .transition()
 
       .duration(800)
       .ease(Math.sqrt)
-      .attr("r", function (d) {return d.properties.no_units_on_property*30;})
-      .style("fill","#f40")
+      .attr("r", function (d) {return d.properties.no_units_on_property * finalRadiusMultiplier;})
+      .style("fill", colorConstantCircle)
       .style("fill-opacity", 1e-6)
       .remove();
       updateCounter(filtered[0].length-1);
@@ -186,7 +216,7 @@ $( document ).ready(function() {
 
       /*Scale dots when map size or zoom is changed*/
       function update() {
-        var up = map.getZoom()/13;
+        var up = map.getZoom()/defaultZoom;
         node.attr("transform", function (d) {
           return "translate(" + map.latLngToLayerPoint(d.LatLng).x + "," + 
             map.latLngToLayerPoint(d.LatLng).y + ") scale("+up+")";});

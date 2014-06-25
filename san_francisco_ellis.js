@@ -1,4 +1,18 @@
 
+/*
+
+// Database columns
+Row ID                  ---> cartodb_id
+Geolocated Address      ---> the_geom
+Street address          ---> address_1
+Date of Eviction        ---> date_filed
+# of Units Evicted      ---> units
+
+// Map + Animation varibales
+lat, long               ---> [34.025, -118.47]
+
+*/
+
 $( document ).ready(function() {
   /*Tooltip showing address info*/
   var tooltip = d3.select("body")
