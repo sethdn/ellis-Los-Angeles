@@ -33,7 +33,7 @@ $( document ).ready(function() {
   var startingTime, startingDateString, maxTime, counterTime, step, timer;
   var animationDuration = 90; // in seconds
   var animationInterval = 250; // in milliseconds
-  var finalRadiusMultiplier = 1.2; //0.6
+  var finalRadiusMultiplier = 1; //0.6
   var colorStaticCircle = "#f30" ;
   var colorExplodeStart = "red";
   var colorExplodeFinish = "#f40";
@@ -94,7 +94,12 @@ $( document ).ready(function() {
 
     /*Static circles on map*/
     var feature = node.append("circle")
-    .attr("r", function(d) { return (d.properties.no_of_withdrawn_units / 2) * finalRadiusMultiplier;})
+    // .attr("r", function(d) { return ((d.properties.no_of_withdrawn_units / (2 * Math.PI)) * finalRadiusMultiplier);})
+    // .attr("r", function(d) { return (d.properties.no_of_withdrawn_units / 2) * finalRadiusMultiplier;})
+    // .attr("r", function(d) { return (Math.pow((d.properties.no_of_withdrawn_units / 2), 0.9) * finalRadiusMultiplier) + 1.5 ;})
+    .attr("r", function(d) { return (d.properties.no_of_withdrawn_units / 2 * finalRadiusMultiplier) + 1.5 ;})
+
+
     .attr("class",  "center")
     .style("stroke", colorStaticCircle);
 
@@ -118,7 +123,7 @@ $( document ).ready(function() {
       if (owner) { ownerText = "Landlord: " + owner + "<br>"; }
 
 
-      $(".tooltip").html(ownerText+addressText+unitText+dateString);
+      $(".tooltip").html(unitText+addressText+ownerText+dateString);
       return tooltip.style("visibility", "visible");
     })
     .on("mousemove", function () {return tooltip.style("top",
